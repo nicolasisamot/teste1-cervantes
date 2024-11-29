@@ -1,0 +1,51 @@
+CREATE TABLE produtos (
+    codigo INT PRIMARY KEY CHECK (codigo > 0) UNIQUE NOT NULL,
+    titulo VARCHAR(255) NOT NULL CHECK (titulo <> '')
+);
+
+CREATE TABLE log_operacoes (
+    id SERIAL PRIMARY KEY, 
+    operacao VARCHAR(10) NOT NULL, -- 'INSERT', 'UPDATE', 'DELETE'
+    tabela VARCHAR(50) NOT NULL, -- Nome da tabela afetada (ex: 'produtos')
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Data e hora da operação
+    descricao VARCHAR(255) -- Descrição da operação
+);
+
+CREATE OR REPLACE FUNCTION log_insert_produto() 
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO log_operacoes (operacao, tabela, descricao)
+    VALUES ('INSERT', 'produtos', 'Inserção de produto com código: ' || NEW.codigo || ' e título: ' || NEW.titulo);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_insert_produto
+AFTER INSERT ON produtos
+FOR EACH ROW EXECUTE FUNCTION log_insert_produto();
+
+CREATE OR REPLACE FUNCTION log_update_produto() 
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO log_operacoes (operacao, tabela, descricao)
+    VALUES ('UPDATE', 'produtos', 'Atualização de produto com código: ' || NEW.codigo || ', título alterado de: ' || OLD.titulo || ' para: ' || NEW.titulo);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_produto
+AFTER UPDATE ON produtos
+FOR EACH ROW EXECUTE FUNCTION log_update_produto();
+
+CREATE OR REPLACE FUNCTION log_delete_produto() 
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO log_operacoes (operacao, tabela, descricao)
+    VALUES ('DELETE', 'produtos', 'Exclusão de produto com código: ' || OLD.codigo || ' e título: ' || OLD.titulo);
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_delete_produto
+AFTER DELETE ON produtos
+FOR EACH ROW EXECUTE FUNCTION log_delete_produto();
